@@ -1,0 +1,17 @@
+{
+  "name": "session-cli",
+  "version": "0.1.0",
+  "module": "bin/session.ts",
+  "type": "module",
+  "bin": { "session": "./bin/session.ts" },
+  "scripts": {
+    "test": "bun test",
+    "start": "bun run bin/session.ts"
+  },
+  "dependencies": {
+    "@toon-format/toon": "latest"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
