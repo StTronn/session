@@ -100,4 +100,40 @@ export function remaining(db: Db, clock: Clock, s: Session): number {
   return s.planned_seconds - elapsed(db, clock, s);
 }
 
+export function pause(db: Db, clock: Clock): Session {
+  const s = active(db);
+  if (!s) throw new Error("no running session");
+  if (s.status === "paused") throw new Error("session is already paused");
+  const now = clock.now();
+  db.raw
+    .query("INSERT INTO session_pause (session_id, paused_at) VALUES (?, ?)")
+    .run(s.id, now);
+  db.raw.query("UPDATE session SET status = 'paused' WHERE id = ?").run(s.id);
+  return get(db, s.id)!;
+}
+
+export function resume(db: Db, clock: Clock): Session {
+  const s = active(db);
+  if (!s) throw new Error("no running session");
+  if (s.status !== "paused") throw new Error("session is not paused");
+  const now = clock.now();
+  db.raw
+    .query(
+      "UPDATE session_pause SET resumed_at = ? " +
+        "WHERE session_id = ? AND resumed_at IS NULL",
+    )
+    .run(now, s.id);
+  db.raw.query("UPDATE session SET status = 'active' WHERE id = ?").run(s.id);
+  return get(db, s.id)!;
+}
+
+export function addTime(db: Db, seconds: number): Session {
+  const s = active(db);
+  if (!s) throw new Error("no running session");
+  db.raw
+    .query("UPDATE session SET planned_seconds = planned_seconds + ? WHERE id = ?")
+    .run(seconds, s.id);
+  return get(db, s.id)!;
+}
+
 export * as Session from "./session";
