@@ -1,22 +1,24 @@
 import type { TuiReadModel } from "../data/read-model";
-import { theme } from "../theme/theme";
+import type { TuiTheme } from "../theme/theme";
 import { formatDuration } from "./format";
+import { SectionHeader, Row } from "./primitives";
 
-export function StatsCard({ model }: { model: TuiReadModel }) {
+export function StatsCard({ model, theme }: { model: TuiReadModel; theme: TuiTheme }) {
+  const active = model.active;
+  const currentValue = active
+    ? `${active.category}${active.tag ? "/" + active.tag : ""} · ${formatDuration(active.remaining_seconds)}`
+    : "No active session";
   return (
-    <box border borderColor={theme.border} padding={1} flexDirection="column">
-      <text fg={theme.muted}>TOTAL FOCUS</text>
-      <text fg={theme.text}>{formatDuration(model.totalFocusSeconds)}</text>
-      <box height={1} />
-      <text fg={theme.muted}>AVG FOCUS/DAY</text>
-      <text fg={theme.text}>{formatDuration(model.averageFocusSeconds)}</text>
-      <box height={1} />
-      <text fg={theme.muted}>CURRENT</text>
-      <text fg={model.active ? theme.accent : theme.dim}>
-        {model.active
-          ? `${model.active.category}${model.active.tag ? "/" + model.active.tag : ""} · ${formatDuration(model.active.remaining_seconds)}`
-          : "No active session"}
-      </text>
+    <box flexDirection="column">
+      <SectionHeader label="Summary" theme={theme} />
+      <Row label="Total Focus" value={formatDuration(model.totalFocusSeconds)} theme={theme} />
+      <Row label="Avg / day" value={formatDuration(model.averageFocusSeconds)} theme={theme} />
+      <Row
+        label="Current"
+        value={currentValue}
+        valueColor={active ? theme.accent : theme.dim}
+        theme={theme}
+      />
     </box>
   );
 }
