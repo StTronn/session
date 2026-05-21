@@ -1,21 +1,43 @@
 import type { CategoryTotal } from "../data/read-model";
-import { theme } from "../theme/theme";
+import type { TuiTheme } from "../theme/theme";
 import { formatDuration } from "./format";
+import { SectionHeader } from "./primitives";
+import { barFill } from "./chart";
 
-export function CategoryTable({ categories }: { categories: CategoryTotal[] }) {
+const BAR_WIDTH = 10;
+
+export function CategoryTable({
+  categories,
+  theme,
+}: {
+  categories: CategoryTotal[];
+  theme: TuiTheme;
+}) {
+  const max = Math.max(...categories.map((c) => c.seconds), 1);
   return (
-    <box border borderColor={theme.border} padding={1} flexDirection="column">
-      <text fg={theme.text}>Category Distribution</text>
-      <box height={1} />
+    <box flexDirection="column">
+      <SectionHeader label="Categories" theme={theme} />
       {categories.length === 0 ? (
         <text fg={theme.dim}>No completed focus sessions in this period</text>
       ) : (
-        categories.map((c) => (
-          <box key={c.category} flexDirection="row" justifyContent="space-between">
-            <text fg={c.color}>● {c.category}</text>
-            <text fg={theme.text}>{formatDuration(c.seconds)}</text>
-          </box>
-        ))
+        categories.map((c) => {
+          const { filled, empty } = barFill(c.seconds, max, BAR_WIDTH);
+          return (
+            <box key={c.category} flexDirection="row">
+              <box width={14}>
+                <text fg={c.color}>● {c.category}</text>
+              </box>
+              <text>
+                <span fg={c.color}>{"▇".repeat(filled)}</span>
+                <span fg={theme.dim}>{"░".repeat(empty)}</span>
+              </text>
+              <box width={2} />
+              <text fg={theme.value}>
+                <strong>{formatDuration(c.seconds)}</strong>
+              </text>
+            </box>
+          );
+        })
       )}
     </box>
   );
