@@ -41,13 +41,14 @@ the CLI commands stay thin.
 
 Paths (under the data dir, `~/.local/share/session/` or `$SESSION_DATA_DIR`):
 
-- `daemon.pid` — the running daemon's PID.
+- `daemon.pid` — JSON metadata for the running daemon:
+  `{ pid, started_at, data_dir, argv }`.
 - `daemon.log` — daemon output and hook stdout/stderr.
 - `hooks/` — the hook scripts directory.
 
 ## 3. Events
 
-Six event types. Each carries a JSON payload: a common `{ event, at }` (event
+Five event types. Each carries a JSON payload: a common `{ event, at }` (event
 name, unix-seconds timestamp) plus event-specific fields.
 
 | Event | Emitted by | Payload adds | Fires when |
@@ -57,32 +58,43 @@ name, unix-seconds timestamp) plus event-specific fields.
 | `session.abandoned` | CLI | session fields* | `session cancel` succeeds |
 | `session.timesup` | daemon | session fields*, `elapsed_seconds` | active session, `elapsed ≥ planned_seconds` |
 | `session.long-pause` | daemon | session fields*, `paused_seconds` | paused session, open pause ≥ `long_pause_seconds` |
-| `block.starting` | daemon | block fields** | `planned` block, `scheduled_start` within `block_lead_seconds` |
 
 \* session fields: `session_id`, `category`, `tag`, `intent`, `planned_seconds`.
-\*\* block fields: `block_id`, `title`, `category`, `tag`, `scheduled_start`,
-`scheduled_end`.
 
-### Configuration (in the existing `config` table)
+### Configuration
 
-- `long_pause_seconds` — default `1200` (20 min).
-- `block_lead_seconds` — default `300` (5 min).
-- `daemon_poll_seconds` — default `15`.
+`long_pause_seconds` (default `1200`, 20 min) and `daemon_poll_seconds`
+(default `15`) are **not** seeded into the `config` table by a migration. They
+follow the existing Config pattern: entries in the in-code `DEFAULTS` map with
+typed getters — `Config.longPauseSeconds(db)`, `Config.daemonPollSeconds(db)` —
+that return the stored value if set and the hardcoded default otherwise, exactly
+like the existing `Config.defaultDuration`.
 
 ## 4. Architecture & Components
 
 ```
 core/
   event/   Event   — event-name constants and payload type definitions;
-                     builders that assemble a payload from a session/block row
-  hooks/   Hooks   — dispatch(event, hooksDir): find hooks/<event>, run it with
-                     the payload as JSON on stdin; non-blocking, timed out
-  daemon/  Daemon  — detectEvents(db, clock): pure function returning the
-                     time-based events to fire now; run(): the watch loop
+                     builders that assemble a payload from a session row
+  hooks/   Hooks   — dispatch(event, options): find hooks/<event>, run it with
+                     the payload as JSON on stdin; bounded by timeoutMs
+  daemon/  Daemon  — detectEvents (pure: state → events); tick (dedup +
+                     dispatch + logging); run (the watch loop)
 cli/
   commands/daemon.ts — daemon start | stop | status | run
   commands/hooks.ts  — hooks list | init
 ```
+
+### Daemon function boundary
+
+- **`detectEvents(db, clock): EventPayload[]`** — pure. Reads only the current
+  session/pause state and returns the time-based events that are *currently*
+  true. It does not touch `fired_event` and has no side effects, so it is
+  exhaustively unit-testable with a fixed clock.
+- **`tick(db, clock, opts): Promise<void>`** — the side-effecting step: calls
+  `detectEvents`, applies `fired_event` dedup (`INSERT OR IGNORE`), dispatches
+  the newly-recorded events via `Hooks.dispatch`, and writes to `daemon.log`.
+- **`run()`** — the watch loop: invokes `tick` every `daemon_poll_seconds`.
 
 **Two emitters, one dispatcher.**
 
@@ -100,18 +112,39 @@ Both paths converge on `Hooks.dispatch` — one definition of "run the hook".
   internal `daemon run` loop. It writes `daemon.pid`; it is a no-op if a live
   daemon already exists. The entry point computes the correct self-respawn argv
   for both `bun run` (dev) and the compiled binary.
-- `session daemon stop` reads `daemon.pid` and terminates the process.
+- `session daemon stop` reads `daemon.pid`, verifies that the PID still appears
+  to be this session daemon for the same data dir, and only then terminates the
+  process.
 - `session daemon status` reports whether the daemon is alive (and its PID).
 - `session daemon run` is the foreground watch loop: every `daemon_poll_seconds`
   it runs one tick. The tick is `detectEvents` + dispatch; the loop wrapper is a
   thin `setInterval`-style shell.
 - The daemon runs until explicitly stopped (no self-exit in v1).
 
+### PID-file safety
+
+The PID file is treated as a hint, not authority. PID reuse is possible, so
+`daemon start`, `daemon stop`, and `daemon status` must validate liveness by
+checking both that the process exists and that its command line looks like this
+daemon running against the same `SESSION_DATA_DIR`.
+
+If `daemon.pid` points at no live process, or at a live process that does not
+match this daemon, the file is stale. `daemon start` may replace a stale file;
+`daemon status` should report it as stale/not running; `daemon stop` must not
+kill an unrelated process.
+
+To avoid double-spawn races from two foreground commands starting at the same
+time, daemon startup should claim the PID file atomically where practical
+(create-or-replace only after stale validation). If two starts race, at most one
+daemon should remain authoritative for a data dir.
+
 ### Auto-spawn
 
-`session start` and `session block add` check `daemon.pid`; if no live daemon is
-found, they spawn one. Normal use therefore never requires starting the daemon
-by hand, while `daemon start/stop/status` remain available for explicit control.
+`session start` checks `daemon.pid`; if no live daemon is found, it spawns one.
+Normal use therefore never requires starting the daemon by hand, while
+`daemon start/stop/status` remain available for explicit control. Block-based
+daemon events are deferred to a later spec, so `session block add` does not
+auto-spawn the daemon in this version.
 
 ## 5. Dedup — the `fired_event` table
 
@@ -122,22 +155,26 @@ CREATE TABLE fired_event (
   id       INTEGER PRIMARY KEY AUTOINCREMENT,
   event    TEXT NOT NULL,
   ref_id   INTEGER NOT NULL,
+  key      TEXT NOT NULL DEFAULT '',
   fired_at INTEGER NOT NULL,
-  UNIQUE (event, ref_id)
+  UNIQUE (event, ref_id, key)
 );
 ```
 
 Before dispatching a daemon-detected event, the daemon does
 `INSERT OR IGNORE INTO fired_event ...`. It dispatches only if a row was actually
-inserted. This makes each time-based event fire **exactly once**, even if the
-daemon restarts.
+inserted. This makes each time-based event occurrence fire **exactly once**,
+even if the daemon restarts.
 
-`ref_id` choice:
+`ref_id` and `key` choice:
 
-- `session.timesup` → the session id.
-- `block.starting` → the block id.
-- `session.long-pause` → the `session_pause` row id, so resuming and pausing
-  again (a new pause row) can legitimately fire a fresh nudge.
+- `session.timesup` → `ref_id` is the session id; `key` is
+  `planned_seconds:<value>`. This means the first time-up event for a planned
+  duration fires once, but if the user extends the session (`session add 5m`) and
+  later crosses the new planned duration, a fresh `session.timesup` can fire.
+- `session.long-pause` → `ref_id` is the `session_pause` row id and `key` is
+  empty, so resuming and pausing again (a new pause row) can legitimately fire a
+  fresh nudge.
 
 CLI lifecycle events are not recorded in `fired_event` — they fire once by
 construction.
@@ -146,17 +183,23 @@ construction.
 
 - Hooks directory: `<dataDir>/hooks/`.
 - One executable file per event, named exactly the event:
-  `hooks/session.timesup`, `hooks/block.starting`, etc.
-- `Hooks.dispatch(event, hooksDir)`:
+  `hooks/session.timesup`, `hooks/session.long-pause`, etc.
+- `Hooks.dispatch(event, options)` where
+  `options = { hooksDir, dataDir, timeoutMs, log: "daemon" | "stderr" }`:
   1. Resolve `hooksDir/<event.event>`. If it does not exist or is not
      executable, do nothing.
   2. Run it with the event payload serialized as JSON on **stdin**, the event
      name in the `SESSION_EVENT` environment variable, and `SESSION_DATA_DIR`
-     set.
-  3. Run it **non-blocking** with a ~10s timeout — a slow or hung hook must not
-     stall the daemon tick or a CLI command.
-  4. Capture stdout/stderr/exit code to `daemon.log` (daemon path) or stderr
-     (CLI path).
+     set to `dataDir`.
+  3. Bound the run by `timeoutMs`. On timeout, kill the hook and continue.
+  4. Route the hook's stdout/stderr/exit code by `log`:
+     - `"daemon"` — append stdout/stderr/exit code to `daemon.log`.
+     - `"stderr"` — write failures (non-zero exit, timeout, hook stderr) to the
+       process's stderr; ignore hook stdout.
+
+The single `options` object removes any ambiguity between the daemon and CLI
+paths. The daemon dispatches with `{ log: "daemon", timeoutMs: 10000 }`; the CLI
+dispatches lifecycle hooks with `{ log: "stderr", timeoutMs: 2000 }`.
 
 ### Commands
 
@@ -185,14 +228,21 @@ session hooks list              # show the hooks directory
 session hooks init              # install example .sample hooks
 ```
 
-`session start` and `session block add` gain auto-spawn behaviour (no new
-flags). No other existing command changes.
+`session start` gains auto-spawn behaviour (no new flags). No other existing
+command changes.
 
 ## 8. Testing
 
 - **`detectEvents`** — pure function; unit-tested with an in-memory DB and a
-  fixed clock. Assert exactly which events fire for a given state, and that the
-  `fired_event` dedup suppresses re-fires on a second tick.
+  fixed clock. Assert exactly which events fire for a given state. It does not
+  read or write `fired_event`.
+- **daemon tick** — integration-ish core test around `detectEvents` + dedup +
+  dispatch. Assert `fired_event` suppresses re-fires on a second tick, and that
+  extending a timed-up session creates a new `session.timesup` occurrence keyed
+  by the new planned duration.
+- **daemon PID lifecycle** — unit/integration tests for stale PID files, PID
+  metadata parsing, same-data-dir process validation, and the no-op behavior of
+  a second `daemon start` when a valid daemon is already running.
 - **`Hooks.dispatch`** — unit-tested against a temp hooks directory: drop a hook
   script that writes its stdin to a file, dispatch an event, assert the file
   contains the right JSON payload. Also test the no-hook and non-executable
@@ -200,9 +250,9 @@ flags). No other existing command changes.
 - **CLI emission** — integration test: run `start` / `done` / `cancel` with a
   temp hooks dir and a recording hook; assert the lifecycle events fired with
   correct payloads.
-- **`daemon start/stop/status`** — integration test that spawns the real
-  process (via `bun run`), asserts the PID lifecycle and that a second `start`
-  is a no-op.
+- **`daemon start/stop/status`** — end-to-end integration test that spawns the
+  real process (via `bun run`) and verifies the command surface around the PID
+  lifecycle covered above.
 - The watch loop wrapper is thin (`detectEvents` + dispatch on an interval);
   coverage focuses on the tick, not the timer.
 
