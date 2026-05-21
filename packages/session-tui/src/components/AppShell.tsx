@@ -1,19 +1,17 @@
 import type { ReactNode } from "react";
-import { theme } from "../theme/theme";
+import type { TuiTheme } from "../theme/theme";
 
-export function AppShell({ children }: { children: ReactNode }) {
+/** Full-width, transparent, padded container — no chrome of its own. */
+export function AppShell({ children, theme }: { children: ReactNode; theme: TuiTheme }) {
   return (
-    <box width="100%" height="100%" backgroundColor={theme.bg} flexDirection="row">
-      <box width={7} borderRight borderColor={theme.border} alignItems="center" paddingTop={2}>
-        <text fg={theme.muted}>◷</text>
-        <box height={2} />
-        <text fg={theme.accent}>▮</text>
-        <box height={2} />
-        <text fg={theme.muted}>▤</text>
-        <box flexGrow={1} />
-        <text fg={theme.muted}>⚙</text>
-      </box>
-      <box flexGrow={1}>{children}</box>
+    <box
+      width="100%"
+      height="100%"
+      backgroundColor={theme.bg}
+      flexDirection="column"
+      padding={1}
+    >
+      {children}
     </box>
   );
 }
