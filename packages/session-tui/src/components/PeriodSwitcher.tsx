@@ -1,26 +1,35 @@
 import type { PeriodMode } from "../data/read-model";
-import { theme } from "../theme/theme";
+import type { TuiTheme } from "../theme/theme";
+
+const MODES: PeriodMode[] = ["day", "week", "month"];
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 export function PeriodSwitcher({
   mode,
   title,
+  theme,
 }: {
   mode: PeriodMode;
   title: string;
+  theme: TuiTheme;
 }) {
   return (
-    <box height={5} alignItems="center" justifyContent="center" borderBottom borderColor={theme.border}>
-      <box flexDirection="row" alignItems="center">
-        <box width={5} height={3} border borderColor={theme.border} alignItems="center" justifyContent="center">
-          <text fg={theme.text}>‹</text>
+    <box flexDirection="column">
+      <box flexDirection="row" justifyContent="space-between">
+        <box flexDirection="row">
+          {MODES.map((m) => (
+            <text key={m} fg={m === mode ? theme.accent : theme.dim}>
+              {m === mode ? <strong>{cap(m)}</strong> : cap(m)}
+              {"   "}
+            </text>
+          ))}
         </box>
-        <box width={32} height={3} border borderColor={theme.border} alignItems="center" justifyContent="center">
-          <text fg={theme.text}>{mode.toUpperCase()} · {title}</text>
-        </box>
-        <box width={5} height={3} border borderColor={theme.border} alignItems="center" justifyContent="center">
-          <text fg={theme.text}>›</text>
-        </box>
+        <text fg={theme.muted}>{title}</text>
       </box>
+      <box borderBottom borderColor={theme.border} />
     </box>
   );
 }
