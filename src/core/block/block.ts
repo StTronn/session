@@ -1,6 +1,7 @@
 // src/core/block/block.ts
 import type { Db } from "@/core/db/db";
 import type { Clock } from "@/core/clock/clock";
+import { Session } from "@/core/session/session";
 
 export type BlockStatus = "planned" | "active" | "done" | "skipped";
 
@@ -88,6 +89,68 @@ export function markSkipped(db: Db, id: number): void {
 
 export function remove(db: Db, id: number): void {
   db.raw.query("DELETE FROM block WHERE id = ?").run(id);
+}
+
+/** Start and end of the local calendar day containing `unixSeconds`. */
+function dayBounds(unixSeconds: number): { start: number; end: number } {
+  const d = new Date(unixSeconds * 1000);
+  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+  const end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 0, 0, 0, 0);
+  return {
+    start: Math.floor(start.getTime() / 1000),
+    end: Math.floor(end.getTime() / 1000),
+  };
+}
+
+/** Blocks that start within the clock's current local day, ordered by start. */
+export function today(db: Db, clock: Clock): Block[] {
+  const { start, end } = dayBounds(clock.now());
+  return (
+    db.raw
+      .query(
+        "SELECT * FROM block WHERE scheduled_start >= ? AND scheduled_start < ? " +
+          "ORDER BY scheduled_start",
+      )
+      .all(start, end) as any[]
+  ).map(rowToBlock);
+}
+
+/** Future blocks (start strictly after now), ordered by start. */
+export function upcoming(db: Db, clock: Clock): Block[] {
+  return (
+    db.raw
+      .query(
+        "SELECT * FROM block WHERE scheduled_start > ? ORDER BY scheduled_start",
+      )
+      .all(clock.now()) as any[]
+  ).map(rowToBlock);
+}
+
+/** The block currently in progress (status 'active'), if any. */
+export function activeBlock(db: Db): Block | null {
+  const r = db.raw
+    .query("SELECT * FROM block WHERE status = 'active' LIMIT 1")
+    .get();
+  return r ? rowToBlock(r) : null;
+}
+
+/** Start a focus session from a block. The session inherits the block's
+ *  category and tag; the block is set to 'active' by Session.start. */
+export function startFromBlock(
+  db: Db,
+  clock: Clock,
+  blockId: number,
+  plannedSeconds: number,
+): Session.Session {
+  const b = get(db, blockId);
+  if (!b) throw new Error(`block ${blockId} not found`);
+  return Session.start(db, clock, {
+    category_id: b.category_id,
+    tag_id: b.tag_id,
+    block_id: b.id,
+    planned_seconds: plannedSeconds,
+    note_path: b.note_path,
+  });
 }
 
 export * as Block from "./block";
