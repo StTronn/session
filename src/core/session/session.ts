@@ -76,14 +76,15 @@ export function start(db: Db, clock: Clock, opts: StartOptions): Session {
   return get(db, Number(info.lastInsertRowid))!;
 }
 
-/** Total paused seconds for a session, counting an open pause up to `now`. */
-function pausedSeconds(db: Db, clock: Clock, s: Session): number {
+/** Total paused seconds for a session, counting an open pause up to `cap`.
+ *  `cap` must be the same end anchor the caller uses, so the open-pause cap
+ *  and the elapsed end anchor never drift apart. */
+function pausedSeconds(db: Db, cap: number, s: Session): number {
   const rows = db.raw
     .query(
       "SELECT paused_at, resumed_at FROM session_pause WHERE session_id = ?",
     )
     .all(s.id) as { paused_at: number; resumed_at: number | null }[];
-  const cap = s.ended_at ?? clock.now();
   let total = 0;
   for (const p of rows) total += (p.resumed_at ?? cap) - p.paused_at;
   return total;
@@ -92,7 +93,7 @@ function pausedSeconds(db: Db, clock: Clock, s: Session): number {
 /** Seconds of actual focus: wall time since start minus paused time. */
 export function elapsed(db: Db, clock: Clock, s: Session): number {
   const end = s.ended_at ?? clock.now();
-  return end - s.started_at - pausedSeconds(db, clock, s);
+  return end - s.started_at - pausedSeconds(db, end, s);
 }
 
 export function remaining(db: Db, clock: Clock, s: Session): number {
