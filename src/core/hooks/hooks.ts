@@ -58,6 +58,12 @@ async function runHook(
     ]);
     if (result === "timeout") {
       proc.kill();
+      // The hook was abandoned: reap its exit and drain its pipes in the
+      // background so neither leaves a dangling promise or a full pipe buffer
+      // that could keep the killed process from exiting.
+      void proc.exited.catch(() => {});
+      void new Response(proc.stderr).text().catch(() => {});
+      void new Response(proc.stdout).text().catch(() => {});
       logLine(`[hook ${event.event}] killed after ${options.timeoutMs}ms`);
       return;
     }
