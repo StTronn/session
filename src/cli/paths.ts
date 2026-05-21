@@ -22,3 +22,9 @@ export function notesDir(): string {
   mkdirSync(dir, { recursive: true });
   return dir;
 }
+
+export function hooksDir(): string {
+  const dir = join(dataDir(), "hooks");
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}

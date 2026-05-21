@@ -15,6 +15,7 @@ import { parseFormat, flag, str, requirePositional } from "@/cli/args";
 import { blockCommands } from "@/cli/commands/block";
 import { viewCommands } from "@/cli/commands/views";
 import { setupCommands } from "@/cli/commands/setup";
+import { daemonCommands } from "@/cli/commands/daemon";
 
 export interface CommandDeps {
   db: Db;
@@ -255,5 +256,6 @@ export function commands(deps: CommandDeps): Command[] {
     ...blockCommands(deps),
     ...viewCommands(deps),
     ...setupCommands(deps),
+    ...daemonCommands(deps),
   ];
 }
