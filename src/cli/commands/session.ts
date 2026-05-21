@@ -16,6 +16,7 @@ import { blockCommands } from "@/cli/commands/block";
 import { viewCommands } from "@/cli/commands/views";
 import { setupCommands } from "@/cli/commands/setup";
 import { daemonCommands } from "@/cli/commands/daemon";
+import { hookCommands } from "@/cli/commands/hooks";
 
 export interface CommandDeps {
   db: Db;
@@ -257,5 +258,6 @@ export function commands(deps: CommandDeps): Command[] {
     ...viewCommands(deps),
     ...setupCommands(deps),
     ...daemonCommands(deps),
+    ...hookCommands(deps),
   ];
 }

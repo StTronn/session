@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "module": "bin/session.ts",
   "type": "module",
+  "workspaces": ["packages/*"],
   "bin": { "session": "./bin/session.ts" },
   "scripts": {
     "test": "bun test",
     "start": "bun run bin/session.ts",
+    "tui": "bun run --cwd packages/session-tui start",
     "build": "bun build ./bin/session.ts --compile --outfile dist/session",
     "build:all": "bun run scripts/build-all.ts"
   },
