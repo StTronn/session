@@ -84,6 +84,27 @@ export function setupCommands(deps: CommandDeps): Command[] {
       },
     },
     {
+      name: "tag rename",
+      summary: "rename a tag: tag rename <id> <name>",
+      run: (ctx) => {
+        const id = Number(requirePositional(ctx.positionals, 0, "id"));
+        const name = requirePositional(ctx.positionals, 1, "name");
+        Tag.rename(db, id, name);
+        ctx.print("renamed\n");
+        return 0;
+      },
+    },
+    {
+      name: "tag archive",
+      summary: "archive a tag: tag archive <id>",
+      run: (ctx) => {
+        const id = Number(requirePositional(ctx.positionals, 0, "id"));
+        Tag.archive(db, id);
+        ctx.print("archived\n");
+        return 0;
+      },
+    },
+    {
       name: "config get",
       summary: "read a config value: config get <key>",
       run: (ctx) => {

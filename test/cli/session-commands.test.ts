@@ -106,4 +106,21 @@ describe("session commands", () => {
     );
     expect(run(["list", "--since", "-2", "--json"]).code).toBe(1);
   });
+  test("start --block links the session to a block and activates it", () => {
+    const { db, clock, run } = setup();
+    // create a block directly
+    const { Block } = require("@/core/block/block");
+    const { Category } = require("@/core/category/category");
+    const cat = Category.ensure(db, clock, "work");
+    const blk = Block.create(db, clock, {
+      category_id: cat.id,
+      scheduled_start: 1000,
+      scheduled_end: 2500,
+    });
+    expect(run(["start", "work", "--block", String(blk.id), "--for", "25m"]).code).toBe(0);
+    const st = JSON.parse(run(["status", "--json"]).out);
+    expect(st.category).toBe("work");
+    expect(Block.get(db, blk.id).status).toBe("active");
+    expect(run(["start", "work", "--block", "999"]).code).toBe(1);
+  });
 });

@@ -59,4 +59,14 @@ describe("view & setup commands", () => {
     run(["config", "set", "default_duration", "3000"]);
     expect(run(["config", "get", "default_duration"]).out.trim()).toBe("3000");
   });
+  test("tag rename and tag archive work", () => {
+    const { run } = setup();
+    run(["category", "add", "work"]);
+    run(["tag", "add", "work", "api"]);
+    expect(run(["tag", "rename", "1", "backend"]).code).toBe(0);
+    expect(run(["tag", "list", "work", "--json"]).out).toContain("backend");
+    expect(run(["tag", "archive", "1"]).code).toBe(0);
+    const list = JSON.parse(run(["tag", "list", "work", "--json"]).out);
+    expect(list.length).toBe(0);
+  });
 });

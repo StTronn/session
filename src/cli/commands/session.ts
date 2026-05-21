@@ -4,6 +4,7 @@ import type { Clock } from "@/core/clock/clock";
 import { Category } from "@/core/category/category";
 import { Tag } from "@/core/tag/tag";
 import { Session } from "@/core/session/session";
+import { Block } from "@/core/block/block";
 import { Note } from "@/core/note/note";
 import { Config } from "@/core/config/config";
 import { View } from "@/core/view/view";
@@ -39,7 +40,7 @@ export function sessionCommands(deps: CommandDeps): Command[] {
   return [
     {
       name: "start",
-      summary: "start a focus session: start <category> [tag] [--for 25m]",
+      summary: "start a focus session: start <category> [tag] [--for 25m] [--block <id>]",
       run: (ctx) => {
         const categoryName = requirePositional(ctx.positionals, 0, "category");
         const tagName = ctx.positionals[1];
@@ -52,11 +53,21 @@ export function sessionCommands(deps: CommandDeps): Command[] {
         const planned = forStr
           ? parseDuration(forStr)
           : Config.defaultDuration(db);
+        const blockStr = str(ctx.flags, "block");
+        let blockId: number | null = null;
+        if (blockStr !== undefined) {
+          const n = Number(blockStr);
+          if (!Number.isInteger(n) || n <= 0 || !Block.get(db, n)) {
+            throw new Error(`block ${blockStr} not found`);
+          }
+          blockId = n;
+        }
         const s = Session.start(db, clock, {
           category_id: categoryId,
           tag_id: tagId,
           intent: str(ctx.flags, "intent") ?? null,
           planned_seconds: planned,
+          block_id: blockId,
         });
         if (flag(ctx.flags, "note")) {
           const rel = Note.create(notesDir, "session", s.id);
