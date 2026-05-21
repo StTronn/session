@@ -81,4 +81,29 @@ describe("session commands", () => {
     expect(Array.isArray(arr)).toBe(true);
     expect(arr.length).toBe(1);
   });
+  test("list --tag filters within a category", () => {
+    const { run } = setup();
+    run(["start", "work", "api", "--for", "1m"]);
+    run(["done", "--reflect", "x"]);
+    run(["start", "work", "docs", "--for", "1m"]);
+    run(["done", "--reflect", "y"]);
+    const apiOnly = JSON.parse(
+      run(["list", "--category", "work", "--tag", "api", "--json"]).out,
+    );
+    expect(apiOnly.length).toBe(1);
+    expect(run(["list", "--tag", "api", "--json"]).code).toBe(1);
+  });
+  test("list --since filters by day window", () => {
+    const { clock, run } = setup();
+    run(["start", "work", "--for", "1m"]);
+    run(["done", "--reflect", "x"]);
+    clock.advance(3 * 86400);
+    expect(JSON.parse(run(["list", "--since", "1", "--json"]).out).length).toBe(
+      0,
+    );
+    expect(JSON.parse(run(["list", "--since", "5", "--json"]).out).length).toBe(
+      1,
+    );
+    expect(run(["list", "--since", "-2", "--json"]).code).toBe(1);
+  });
 });

@@ -175,7 +175,8 @@ export function sessionCommands(deps: CommandDeps): Command[] {
     },
     {
       name: "list",
-      summary: "list past sessions [--today|--since d|--category|--tag]",
+      summary:
+        "list past sessions [--today|--since <days>|--category <c>|--tag <t>]",
       run: (ctx) => {
         let since: number | undefined;
         if (flag(ctx.flags, "today")) {
@@ -185,11 +186,31 @@ export function sessionCommands(deps: CommandDeps): Command[] {
               1000,
           );
         }
+        const sinceStr = str(ctx.flags, "since");
+        if (sinceStr !== undefined) {
+          const days = Number(sinceStr);
+          if (!Number.isFinite(days) || days <= 0) {
+            throw new Error("--since expects a positive number of days");
+          }
+          since = clock.now() - days * 86400;
+        }
         const catName = str(ctx.flags, "category");
         const cat = catName ? Category.getByName(db, catName) : null;
+        if (catName && !cat) throw new Error(`category "${catName}" not found`);
+        const tagName = str(ctx.flags, "tag");
+        let tagId: number | undefined;
+        if (tagName !== undefined) {
+          if (!cat) throw new Error("--tag requires --category");
+          const tag = Tag.getByName(db, cat.id, tagName);
+          if (!tag) {
+            throw new Error(`tag "${tagName}" not found in "${catName}"`);
+          }
+          tagId = tag.id;
+        }
         const rows = Session.list(db, {
           since,
           category_id: cat?.id,
+          tag_id: tagId,
         });
         const format = parseFormat(ctx.flags);
         ctx.print(
