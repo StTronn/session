@@ -136,4 +136,94 @@ export function addTime(db: Db, seconds: number): Session {
   return get(db, s.id)!;
 }
 
+/** Close any open pause row for a session at time `now`. */
+function closeOpenPause(db: Db, sessionId: number, now: number): void {
+  db.raw
+    .query(
+      "UPDATE session_pause SET resumed_at = ? " +
+        "WHERE session_id = ? AND resumed_at IS NULL",
+    )
+    .run(now, sessionId);
+}
+
+export function complete(
+  db: Db,
+  clock: Clock,
+  reflection?: string | null,
+): Session {
+  const s = active(db);
+  if (!s) throw new Error("no running session");
+  const now = clock.now();
+  if (s.status === "paused") closeOpenPause(db, s.id, now);
+  db.raw
+    .query(
+      "UPDATE session SET status = 'completed', ended_at = ?, " +
+        "reflection = ? WHERE id = ?",
+    )
+    .run(now, reflection ?? null, s.id);
+  if (s.block_id != null) {
+    db.raw
+      .query("UPDATE block SET status = 'done' WHERE id = ?")
+      .run(s.block_id);
+  }
+  return get(db, s.id)!;
+}
+
+export function abandon(db: Db, clock: Clock): Session {
+  const s = active(db);
+  if (!s) throw new Error("no running session");
+  const now = clock.now();
+  if (s.status === "paused") closeOpenPause(db, s.id, now);
+  db.raw
+    .query("UPDATE session SET status = 'abandoned', ended_at = ? WHERE id = ?")
+    .run(now, s.id);
+  if (s.block_id != null) {
+    db.raw
+      .query("UPDATE block SET status = 'planned' WHERE id = ?")
+      .run(s.block_id);
+  }
+  return get(db, s.id)!;
+}
+
+export function reflect(db: Db, id: number, text: string): Session {
+  const s = get(db, id);
+  if (!s) throw new Error(`session ${id} not found`);
+  db.raw.query("UPDATE session SET reflection = ? WHERE id = ?").run(text, id);
+  return get(db, id)!;
+}
+
+export interface ListOptions {
+  since?: number;
+  category_id?: number;
+  tag_id?: number;
+  limit?: number;
+}
+
+/** Past sessions (completed or abandoned), newest first. */
+export function list(db: Db, opts: ListOptions = {}): Session[] {
+  const where: string[] = ["status IN ('completed','abandoned')"];
+  const params: unknown[] = [];
+  if (opts.since != null) {
+    where.push("started_at >= ?");
+    params.push(opts.since);
+  }
+  if (opts.category_id != null) {
+    where.push("category_id = ?");
+    params.push(opts.category_id);
+  }
+  if (opts.tag_id != null) {
+    where.push("tag_id = ?");
+    params.push(opts.tag_id);
+  }
+  let sql =
+    "SELECT * FROM session WHERE " +
+    where.join(" AND ") +
+    " ORDER BY started_at DESC, id DESC";
+  if (opts.limit != null) {
+    sql += " LIMIT ?";
+    params.push(opts.limit);
+  }
+  return (db.raw.query(sql).all(...params) as any[]).map(rowToSession);
+}
+
 export * as Session from "./session";
