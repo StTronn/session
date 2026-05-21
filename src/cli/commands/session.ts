@@ -1,6 +1,7 @@
 // src/cli/commands/session.ts
 import type { Db } from "@/core/db/db";
 import type { Clock } from "@/core/clock/clock";
+import { dirname, join } from "node:path";
 import { Category } from "@/core/category/category";
 import { Tag } from "@/core/tag/tag";
 import { Session } from "@/core/session/session";
@@ -9,6 +10,8 @@ import { Note } from "@/core/note/note";
 import { Config } from "@/core/config/config";
 import { View } from "@/core/view/view";
 import { parseDuration } from "@/core/time/duration";
+import { Event } from "@/core/event/event";
+import { Hooks } from "@/core/hooks/hooks";
 import type { Command } from "@/cli/registry";
 import { render, formatDuration } from "@/cli/format/format";
 import { parseFormat, flag, str, requirePositional } from "@/cli/args";
@@ -35,6 +38,30 @@ function resolveCategoryTag(
     ? Tag.ensure(deps.db, deps.clock, cat.id, tagName)
     : null;
   return { categoryId: cat.id, tagId: tag ? tag.id : null };
+}
+
+/** Fire a lifecycle hook for a session, derived from the deps. Fire-and-forget;
+ *  bin/session.ts (and tests) await Hooks.drain() to let it finish. */
+function emit(
+  deps: CommandDeps,
+  name: "session.started" | "session.completed" | "session.abandoned",
+  session: Session.Session,
+  extra: Record<string, unknown> = {},
+): void {
+  const dataDir = dirname(deps.notesDir);
+  const payload = Event.fromSession(
+    deps.db,
+    name,
+    deps.clock.now(),
+    session,
+    extra,
+  );
+  void Hooks.dispatch(payload, {
+    hooksDir: join(dataDir, "hooks"),
+    dataDir,
+    timeoutMs: 2000,
+    log: "stderr",
+  });
 }
 
 export function sessionCommands(deps: CommandDeps): Command[] {
@@ -71,6 +98,7 @@ export function sessionCommands(deps: CommandDeps): Command[] {
           planned_seconds: planned,
           block_id: blockId,
         });
+        emit(deps, "session.started", s);
         if (flag(ctx.flags, "note")) {
           const rel = Note.create(notesDir, "session", s.id);
           db.raw
@@ -147,7 +175,8 @@ export function sessionCommands(deps: CommandDeps): Command[] {
       summary: "complete the running session [--reflect \"…\"]",
       run: (ctx) => {
         const reflection = str(ctx.flags, "reflect") ?? null;
-        Session.complete(db, clock, reflection);
+        const done = Session.complete(db, clock, reflection);
+        emit(deps, "session.completed", done, { reflection });
         ctx.print("session completed\n");
         return 0;
       },
@@ -156,7 +185,8 @@ export function sessionCommands(deps: CommandDeps): Command[] {
       name: "cancel",
       summary: "abandon the running session",
       run: (ctx) => {
-        Session.abandon(db, clock);
+        const abandoned = Session.abandon(db, clock);
+        emit(deps, "session.abandoned", abandoned);
         ctx.print("session abandoned\n");
         return 0;
       },
