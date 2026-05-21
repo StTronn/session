@@ -6,7 +6,9 @@
   "bin": { "session": "./bin/session.ts" },
   "scripts": {
     "test": "bun test",
-    "start": "bun run bin/session.ts"
+    "start": "bun run bin/session.ts",
+    "build": "bun build ./bin/session.ts --compile --outfile dist/session",
+    "build:all": "bun run scripts/build-all.ts"
   },
   "dependencies": {
     "@toon-format/toon": "latest"

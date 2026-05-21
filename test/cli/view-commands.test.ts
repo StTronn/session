@@ -69,4 +69,11 @@ describe("view & setup commands", () => {
     const list = JSON.parse(run(["tag", "list", "work", "--json"]).out);
     expect(list.length).toBe(0);
   });
+  test("version prints the package version", () => {
+    const { run } = setup();
+    const pkg = require("../../package.json");
+    const { code, out } = run(["version"]);
+    expect(code).toBe(0);
+    expect(out.trim()).toBe(pkg.version);
+  });
 });

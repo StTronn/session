@@ -6,10 +6,19 @@ import type { Command } from "@/cli/registry";
 import { render } from "@/cli/format/format";
 import { parseFormat, requirePositional } from "@/cli/args";
 import type { CommandDeps } from "@/cli/commands/session";
+import { VERSION } from "@/version";
 
 export function setupCommands(deps: CommandDeps): Command[] {
   const { db, clock } = deps;
   return [
+    {
+      name: "version",
+      summary: "print the session CLI version",
+      run: (ctx) => {
+        ctx.print(VERSION + "\n");
+        return 0;
+      },
+    },
     {
       name: "category add",
       summary: "create a category: category add <name>",
