@@ -11,6 +11,7 @@ import { parseDuration } from "@/core/time/duration";
 import type { Command } from "@/cli/registry";
 import { render, formatDuration } from "@/cli/format/format";
 import { parseFormat, flag, str, requirePositional } from "@/cli/args";
+import { blockCommands } from "@/cli/commands/block";
 
 export interface CommandDeps {
   db: Db;
@@ -234,7 +235,7 @@ export function sessionCommands(deps: CommandDeps): Command[] {
   ];
 }
 
-/** All commands. Block/view/setup groups are merged in Tasks 19–20. */
+/** All commands. View/setup groups are merged in Task 20. */
 export function commands(deps: CommandDeps): Command[] {
-  return [...sessionCommands(deps)];
+  return [...sessionCommands(deps), ...blockCommands(deps)];
 }
