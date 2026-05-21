@@ -46,7 +46,7 @@ function emit(
   deps: CommandDeps,
   name: "session.started" | "session.completed" | "session.abandoned",
   session: Session.Session,
-  extra: Record<string, unknown> = {},
+  extra: Partial<Event.EventPayload> = {},
 ): void {
   const dataDir = dirname(deps.notesDir);
   const payload = Event.fromSession(
