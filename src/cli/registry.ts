@@ -18,6 +18,7 @@ export interface Command {
 const PARSE_OPTIONS = {
   format: { type: "string" },
   json: { type: "boolean" },
+  toon: { type: "boolean" },
   note: { type: "boolean" },
   tmux: { type: "boolean" },
   today: { type: "boolean" },

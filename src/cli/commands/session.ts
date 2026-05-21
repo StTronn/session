@@ -12,6 +12,8 @@ import type { Command } from "@/cli/registry";
 import { render, formatDuration } from "@/cli/format/format";
 import { parseFormat, flag, str, requirePositional } from "@/cli/args";
 import { blockCommands } from "@/cli/commands/block";
+import { viewCommands } from "@/cli/commands/views";
+import { setupCommands } from "@/cli/commands/setup";
 
 export interface CommandDeps {
   db: Db;
@@ -235,7 +237,12 @@ export function sessionCommands(deps: CommandDeps): Command[] {
   ];
 }
 
-/** All commands. View/setup groups are merged in Task 20. */
+/** Every command in the CLI. */
 export function commands(deps: CommandDeps): Command[] {
-  return [...sessionCommands(deps), ...blockCommands(deps)];
+  return [
+    ...sessionCommands(deps),
+    ...blockCommands(deps),
+    ...viewCommands(deps),
+    ...setupCommands(deps),
+  ];
 }

@@ -6,6 +6,7 @@ export type Flags = Record<string, string | boolean | undefined>;
 /** Resolve the output format from parsed flags. `--json` is a shorthand. */
 export function parseFormat(flags: Flags): OutputFormat {
   if (flags.json === true) return "json";
+  if (flags.toon === true) return "toon";
   const f = flags.format;
   if (f === undefined) return "text";
   if (f === "text" || f === "json" || f === "toon") return f;
