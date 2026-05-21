@@ -3,6 +3,8 @@ import type { Db } from "@/core/db/db";
 
 const DEFAULTS: Record<string, string> = {
   default_duration: "1500", // 25 minutes, in seconds
+  long_pause_seconds: "1200", // 20 minutes
+  daemon_poll_seconds: "15",
 };
 
 export function get(db: Db, key: string): string | null {
@@ -34,6 +36,14 @@ export function all(db: Db): Record<string, string> {
 
 export function defaultDuration(db: Db): number {
   return parseInt(get(db, "default_duration") ?? "1500", 10);
+}
+
+export function longPauseSeconds(db: Db): number {
+  return parseInt(get(db, "long_pause_seconds") ?? "1200", 10);
+}
+
+export function daemonPollSeconds(db: Db): number {
+  return parseInt(get(db, "daemon_poll_seconds") ?? "15", 10);
 }
 
 export * as Config from "./config";

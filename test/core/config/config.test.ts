@@ -27,4 +27,15 @@ describe("config", () => {
     expect(Config.get(db, "missing")).toBeNull();
     db.close();
   });
+
+  test("daemon config getters return defaults and honour overrides", () => {
+    const db = open(":memory:");
+    expect(Config.longPauseSeconds(db)).toBe(1200);
+    expect(Config.daemonPollSeconds(db)).toBe(15);
+    Config.set(db, "long_pause_seconds", "600");
+    Config.set(db, "daemon_poll_seconds", "5");
+    expect(Config.longPauseSeconds(db)).toBe(600);
+    expect(Config.daemonPollSeconds(db)).toBe(5);
+    db.close();
+  });
 });

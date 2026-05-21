@@ -64,4 +64,14 @@ export const MIGRATIONS: string[] = [
   CREATE INDEX idx_block_start ON block(scheduled_start);
   CREATE INDEX idx_pause_session ON session_pause(session_id);
   `,
+  `
+  CREATE TABLE fired_event (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    event    TEXT NOT NULL,
+    ref_id   INTEGER NOT NULL,
+    key      TEXT NOT NULL DEFAULT '',
+    fired_at INTEGER NOT NULL,
+    UNIQUE (event, ref_id, key)
+  );
+  `,
 ];

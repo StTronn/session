@@ -37,4 +37,17 @@ describe("db", () => {
     ).toThrow();
     db.close();
   });
+
+  test("migration 2 creates the fired_event table", () => {
+    const db = open(":memory:");
+    const tables = db.raw
+      .query("SELECT name FROM sqlite_master WHERE type='table'")
+      .all()
+      .map((r: any) => r.name);
+    expect(tables).toContain("fired_event");
+    const version = (db.raw.query("PRAGMA user_version").get() as any)
+      .user_version;
+    expect(version).toBe(2);
+    db.close();
+  });
 });
