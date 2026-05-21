@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__deepwiki__ask_question",
+      "Bash(git init *)",
+      "Bash(git checkout *)",
+      "Bash(bun init *)",
+      "Read(//usr/local/bin/**)",
+      "Read(//Users/rishav/.bun/bin/**)",
+      "Read(//opt/homebrew/bin/**)",
+      "Read(//Users/rishav/**)",
+      "Read(//Users/rishav/.cargo/bin/**)",
+      "Bash(curl -fsSL https://bun.sh/install)",
+      "Bash(bash)"
+    ]
+  }
+}
