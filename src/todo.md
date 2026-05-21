@@ -8,6 +8,23 @@ Create a skill for the productivity-manager agent to drive Session (read
 A terminal UI over the existing core: a calendar view for time blocks, a view of
 when work happened, weekly/daily graphs colour-coded by category.
 
+Build this as a reusable component system rather than one fixed screen. The same
+parts should compose into multiple views:
+
+- **Daily view** — selected day timeline, active/current session controls,
+  blocks, notes/reflections, and per-category focus breakdown.
+- **Weekly view** — seven-day graph, total focus, average focus/day, category
+  distribution, and day selection.
+- **Monthly view** — calendar heatmap / month grid, category totals, trend
+  summary, and drill-down into a selected day or week.
+- **Compact popup view** — a small tmux popup/card version of the weekly or
+  current-session view.
+
+Prefer reusable TUI primitives such as `AppShell`, `PeriodSwitcher`,
+`StatsCard`, `BarGraph`, `CategoryLegend`, `Timeline`, `SessionControlBar`, and
+`EmptyState`. Data should come from core/view read models, not ad hoc SQL inside
+components, so CLI, agent output, and TUI can share the same behavior.
+
 ## Roadmap — larger features (each its own spec → plan → build)
 
 - **App / website blocking** — the signature feature of the original Session
