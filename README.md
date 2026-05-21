@@ -8,12 +8,12 @@ JSON/TOON read surface for AI agents.
 Download the prebuilt binary for your platform — no Bun or Node required:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/OWNER/REPO/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/StTronn/session/main/install.sh | sh
 ```
 
 This fetches the right binary from the latest GitHub Release and installs it to
 `~/.local/bin/session`. You can also download a binary manually from the
-[Releases page](https://github.com/OWNER/REPO/releases) — `session-macos-arm64`,
+[Releases page](https://github.com/StTronn/session/releases) — `session-macos-arm64`,
 `session-macos-x64`, `session-linux-x64`, or `session-windows-x64.exe` — then
 `chmod +x` it and move it onto your `PATH`.
 

@@ -1,10 +1,10 @@
 #!/bin/sh
 # Install the `session` CLI by downloading the prebuilt binary for this platform.
-# Usage: curl -fsSL https://raw.githubusercontent.com/OWNER/REPO/main/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/StTronn/session/main/install.sh | sh
 set -e
 
-# Replace OWNER/REPO with your GitHub repository, or set SESSION_REPO.
-REPO="${SESSION_REPO:-OWNER/REPO}"
+# Override with SESSION_REPO if you fork the project.
+REPO="${SESSION_REPO:-StTronn/session}"
 INSTALL_DIR="${SESSION_INSTALL_DIR:-$HOME/.local/bin}"
 
 os=$(uname -s)
