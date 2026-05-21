@@ -26,7 +26,8 @@ export function blockCommands(deps: CommandDeps): Command[] {
     {
       name: "block add",
       summary:
-        "add a time block: block add <category> [tag] --from <t> --to <t>",
+        "add a time block: block add <category> [tag] --from <t> --to <t> " +
+        "[--title <s>] [--note]",
       run: (ctx) => {
         const categoryName = requirePositional(ctx.positionals, 0, "category");
         const tagName = ctx.positionals[1];
