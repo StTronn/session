@@ -2,7 +2,7 @@ import type { DayBucket } from "../data/read-model";
 import type { TuiTheme } from "../theme/theme";
 import { formatDuration } from "./format";
 import { SectionHeader } from "./primitives";
-import { columnCells } from "./chart";
+import { columnCells, columnGradient } from "./chart";
 
 const COLUMN_ROWS = 5;
 const COLUMN_WIDTH = 5;
@@ -19,6 +19,7 @@ export function BarGraph({ days, theme }: { days: DayBucket[]; theme: TuiTheme }
   const shown = days.slice(0, 7);
   const max = Math.max(...shown.map((d) => d.focusSeconds), 3600);
   const now = Date.now() / 1000;
+  const rowColors = columnGradient(COLUMN_ROWS);
   return (
     <box flexDirection="column">
       <SectionHeader
@@ -39,7 +40,7 @@ export function BarGraph({ days, theme }: { days: DayBucket[]; theme: TuiTheme }
               alignItems="center"
             >
               {cells.map((c, i) => (
-                <text key={i} fg={theme.accent}>
+                <text key={i} fg={rowColors[i]}>
                   {isToday ? <strong>{c}</strong> : c}
                 </text>
               ))}

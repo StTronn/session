@@ -1,10 +1,5 @@
 import type { ColorValue, TuiTheme } from "../theme/theme";
 
-/** A full-width hairline rule (a box with only a bottom border). */
-export function Rule({ theme }: { theme: TuiTheme }) {
-  return <box borderBottom borderColor={theme.border} />;
-}
-
 /** A cyan section heading, with an optional dim right-aligned label. */
 export function SectionHeader({
   label,

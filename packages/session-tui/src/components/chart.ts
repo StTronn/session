@@ -23,6 +23,31 @@ export function columnCells(value: number, max: number, rows: number): string[] 
   return cells;
 }
 
+// Vertical gradient endpoints for distribution columns.
+const GRADIENT_TOP = [123, 216, 143] as const; // green — tall bars reach here
+const GRADIENT_BOTTOM = [96, 165, 255] as const; // blue — every bar starts here
+
+function lerp(a: number, b: number, t: number): number {
+  return Math.round(a + (b - a) * t);
+}
+
+/**
+ * Per-row colors for a vertical bar, ordered top-to-bottom: blue at the
+ * bottom fading to green at the top, so taller (higher-value) bars show
+ * green tips.
+ */
+export function columnGradient(rows: number): string[] {
+  return Array.from({ length: rows }, (_, r) => {
+    const t = rows <= 1 ? 0 : r / (rows - 1); // 0 = top, 1 = bottom
+    const channels = [0, 1, 2].map((c) =>
+      lerp(GRADIENT_TOP[c]!, GRADIENT_BOTTOM[c]!, t)
+        .toString(16)
+        .padStart(2, "0"),
+    );
+    return `#${channels.join("")}`;
+  });
+}
+
 /** Split a horizontal bar of `width` cells into filled and empty counts. */
 export function barFill(
   value: number,

@@ -3,7 +3,7 @@ import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { open } from "@/core/db/db";
 import { systemClock } from "@/core/clock/clock";
-import { dbPath } from "@/cli/paths";
+import { dbPath, notesDir } from "@/cli/paths";
 import { App } from "./App";
 
 const compact = process.argv.includes("--compact");
@@ -19,5 +19,10 @@ const renderer = await createCliRenderer({
 });
 
 createRoot(renderer).render(
-  <App db={db} clock={systemClock()} compact={compact} />,
+  <App
+    db={db}
+    clock={systemClock()}
+    compact={compact}
+    notesDir={notesDir()}
+  />,
 );

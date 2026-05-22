@@ -12,10 +12,12 @@ export function CalendarTimeline({
   day,
   now,
   theme,
+  selectedBlockId,
 }: {
   day: DayBucket;
   now: number;
   theme: TuiTheme;
+  selectedBlockId: number | null;
 }) {
   const hours = Array.from({ length: 16 }, (_, i) => i + 6);
   const currentHour = new Date(now * 1000).getHours();
@@ -40,7 +42,8 @@ export function CalendarTimeline({
                 ) : (
                   blocks.map((b) => (
                     <text key={b.id} fg={b.color}>
-                      █ {formatClock(b.start)}-{formatClock(b.end)} {b.title}
+                      {b.id === selectedBlockId ? "▸" : " "}█{" "}
+                      {formatClock(b.start)}-{formatClock(b.end)} {b.title}
                     </text>
                   ))
                 )}

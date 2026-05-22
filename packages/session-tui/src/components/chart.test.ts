@@ -1,5 +1,5 @@
 import { test, expect, describe } from "bun:test";
-import { columnCells, barFill } from "./chart";
+import { columnCells, barFill, columnGradient } from "./chart";
 
 describe("columnCells", () => {
   test("returns one entry per row", () => {
@@ -21,6 +21,22 @@ describe("columnCells", () => {
   test("tiny non-zero value still shows at least one eighth", () => {
     const cells = columnCells(1, 100000, 5);
     expect(cells[4]).toBe("▁");
+  });
+});
+
+describe("columnGradient", () => {
+  test("returns one hex color per row", () => {
+    const colors = columnGradient(5);
+    expect(colors).toHaveLength(5);
+    for (const c of colors) expect(c).toMatch(/^#[0-9a-f]{6}$/);
+  });
+  test("top row is green, bottom row is blue", () => {
+    const colors = columnGradient(5);
+    expect(colors[0]).toBe("#7bd88f");
+    expect(colors[4]).toBe("#60a5ff");
+  });
+  test("a single row collapses to the top color", () => {
+    expect(columnGradient(1)).toEqual(["#7bd88f"]);
   });
 });
 

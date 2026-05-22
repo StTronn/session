@@ -26,6 +26,7 @@ export interface CalendarBlock {
   end: number;
   status: string;
   color: string;
+  notePath: string | null;
 }
 
 export interface CategoryTotal {
@@ -170,6 +171,7 @@ export function readTuiModel(
       end: b.scheduled_end,
       status: b.status,
       color: colorFor(category),
+      notePath: b.note_path,
     });
   }
 
